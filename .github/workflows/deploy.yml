@@ -3,47 +3,27 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - ci-cd-test  # Only run this workflow for ci-cd-test branch
+      - ci-cd-test
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: 🧰 Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: 📦 Install dependencies
-        run: npm install
-
-      - name: 🔍 SonarQube scan
+      - name: SonarQube scan
         uses: sonarsource/sonarqube-scan-action@master
-        with:
-          projectBaseDir: '.'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: http://localhost:9000
 
-      - name: 🚀 Copy files to EC2
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
-          target: "~/app"
+      - name: Copy files to local app directory
+        run: |
+          mkdir -p ~/app
+          cp -r * ~/app/
 
-      - name: 🖥️ SSH into EC2 and run app
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            chmod +x ~/app/start.sh
-            ~/app/start.sh
+      - name: Run start.sh to deploy
+        run: |
+          chmod +x ~/app/start.sh
+          ~/app/start.sh
